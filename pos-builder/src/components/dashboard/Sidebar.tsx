@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, Store, LogOut, Plus, ShoppingCart, Package, Users } from 'lucide-react'
+import { LayoutDashboard, LogOut, ShoppingCart, Package, Users } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 import type { Store as StoreType } from '@/types'
@@ -27,7 +27,6 @@ export function DashboardSidebar({ user, stores }: Props) {
 
   return (
     <aside className="w-64 shrink-0 bg-white dark:bg-surface-900 border-r border-surface-100 dark:border-surface-800 flex flex-col h-full">
-      {/* Logo */}
       <div className="px-5 py-5 border-b border-surface-100 dark:border-surface-800">
         <div className="flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold text-sm">P</div>
@@ -35,20 +34,15 @@ export function DashboardSidebar({ user, stores }: Props) {
         </div>
       </div>
 
-      {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         <NavItem href="/dashboard" icon={<LayoutDashboard size={16} />} label="Overview" active={pathname === '/dashboard'} />
 
-        {/* Stores section */}
         {stores.length > 0 && (
           <div className="mt-4">
             <p className="text-xs font-semibold text-surface-400 uppercase tracking-wider px-3 mb-2">My Stores</p>
             {stores.map((store) => (
               <div key={store.id} className="mb-1">
-                <div className={cn(
-                  'flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-surface-600 dark:text-surface-400',
-                  'font-medium'
-                )}>
+                <div className={cn('flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-surface-600 dark:text-surface-400 font-medium')}>
                   <span className="text-base">{STORE_TYPE_ICONS[store.type]}</span>
                   <span className="truncate flex-1">{store.name}</span>
                 </div>
@@ -66,7 +60,8 @@ export function DashboardSidebar({ user, stores }: Props) {
                     label="Products"
                     active={pathname === `/store/${store.id}/products`}
                     small
-                    <NavItem
+                  />
+                  <NavItem
                     href={`/store/${store.id}/members`}
                     icon={<Users size={14} />}
                     label="Team Members"
@@ -80,7 +75,6 @@ export function DashboardSidebar({ user, stores }: Props) {
         )}
       </nav>
 
-      {/* Footer */}
       <div className="px-3 py-3 border-t border-surface-100 dark:border-surface-800 space-y-1">
         <div className="px-3 py-2">
           <p className="text-xs font-medium text-surface-700 dark:text-surface-300 truncate">{user.email}</p>
