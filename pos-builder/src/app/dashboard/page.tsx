@@ -5,8 +5,8 @@ import { Card, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { CreateStoreModal } from '@/components/dashboard/CreateStoreModal'
 import { STORE_TYPE_LABELS, STORE_TYPE_ICONS, formatCurrency } from '@/lib/utils'
-import { ShoppingCart, Package, TrendingUp } from 'lucide-react'
-import type { Store, StoreType } from '@/types'
+import { ShoppingCart, Package, TrendingUp, Users } from 'lucide-react'
+import type { Store, StoreType, Sale } from '@/types'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -23,16 +23,24 @@ export default async function DashboardPage() {
 
   const salesData: Record<string, number> = {}
   const salesTotals: Record<string, number> = {}
+  const paymentStats: Record<string, Record<string, number>> = {}
 
   for (const store of stores) {
     const { data: sales } = await supabase
       .from('sales')
-      .select('total')
+      .select('total, payment_method')
       .eq('store_id', store.id)
 
-    const salesTyped = (sales || []) as { total: number }[]
+    const salesTyped = (sales || []) as { total: number; payment_method: string }[]
     salesData[store.id] = salesTyped.length
     salesTotals[store.id] = salesTyped.reduce((a, s) => a + (s.total || 0), 0)
+
+    paymentStats[store.id] = { cash: 0, card: 0, qr: 0 }
+    salesTyped.forEach((s) => {
+      if (s.payment_method in paymentStats[store.id]) {
+        paymentStats[store.id][s.payment_method] += s.total
+      }
+    })
   }
 
   const totalRevenue = Object.values(salesTotals).reduce((a, b) => a + b, 0)
@@ -48,12 +56,14 @@ export default async function DashboardPage() {
         <CreateStoreModal />
       </div>
 
+      {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <StatCard icon={<Package className="text-brand-600" size={20} />} label="Total Stores" value={String(stores.length)} color="brand" />
         <StatCard icon={<ShoppingCart className="text-emerald-600" size={20} />} label="Total Sales" value={String(totalSales)} color="emerald" />
         <StatCard icon={<TrendingUp className="text-violet-600" size={20} />} label="Total Revenue" value={formatCurrency(totalRevenue)} color="violet" />
       </div>
 
+      {/* Stores */}
       {stores.length === 0 ? (
         <Card variant="bordered">
           <CardContent className="py-16 text-center">
@@ -83,7 +93,8 @@ export default async function DashboardPage() {
                     <Badge variant={store.theme === 'dark' ? 'default' : 'warning'}>{store.theme}</Badge>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-2 mb-4 text-center">
+                  {/* Sales Stats */}
+                  <div className="grid grid-cols-2 gap-2 mb-3 text-center">
                     <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-2.5">
                       <div className="font-bold text-surface-900 dark:text-surface-100 text-sm">{salesData[store.id] || 0}</div>
                       <div className="text-xs text-surface-500">Sales</div>
@@ -94,12 +105,33 @@ export default async function DashboardPage() {
                     </div>
                   </div>
 
+                  {/* Payment breakdown */}
+                  {salesData[store.id] > 0 && (
+                    <div className="grid grid-cols-3 gap-1.5 mb-3">
+                      <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-2 text-center">
+                        <div className="text-xs font-bold text-emerald-700 dark:text-emerald-400">💵 {formatCurrency(paymentStats[store.id]?.cash || 0)}</div>
+                        <div className="text-xs text-emerald-600 dark:text-emerald-500">Cash</div>
+                      </div>
+                      <div className="bg-brand-50 dark:bg-brand-900/20 rounded-xl p-2 text-center">
+                        <div className="text-xs font-bold text-brand-700 dark:text-brand-400">💳 {formatCurrency(paymentStats[store.id]?.card || 0)}</div>
+                        <div className="text-xs text-brand-600 dark:text-brand-500">Card</div>
+                      </div>
+                      <div className="bg-violet-50 dark:bg-violet-900/20 rounded-xl p-2 text-center">
+                        <div className="text-xs font-bold text-violet-700 dark:text-violet-400">📱 {formatCurrency(paymentStats[store.id]?.qr || 0)}</div>
+                        <div className="text-xs text-violet-600 dark:text-violet-500">QR</div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="flex gap-2">
                     <Link href={`/store/${store.id}/pos`} className="flex-1 flex items-center justify-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold py-2 px-3 rounded-xl transition-colors">
-                      <ShoppingCart size={13} /> Open POS
+                      <ShoppingCart size={13} />Open POS
                     </Link>
                     <Link href={`/store/${store.id}/products`} className="flex-1 flex items-center justify-center gap-1.5 bg-surface-100 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300 text-xs font-semibold py-2 px-3 rounded-xl transition-colors">
-                      <Package size={13} /> Products
+                      <Package size={13} />Products
+                    </Link>
+                    <Link href={`/store/${store.id}/members`} className="flex items-center justify-center gap-1.5 bg-surface-100 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300 text-xs font-semibold py-2 px-3 rounded-xl transition-colors">
+                      <Users size={13} />
                     </Link>
                   </div>
                 </CardContent>
