@@ -67,10 +67,19 @@ export function POSTerminal({ store, initialProducts }: Props) {
 
     const supabase = createClient()
     try {
-      const { data: sale, error: saleErr } = await supabase
-        .from('sales')
-        .insert({ store_id: store.id, total, items_count: itemCount, payment_method: selectedPayment })
-        .select().single()
+      const { data: { user } } = await supabase.auth.getUser()
+
+    const { data: sale, error: saleErr } = await supabase
+    .from('sales')
+    .insert({ 
+    store_id: store.id, 
+    total, 
+    items_count: itemCount, 
+    payment_method: selectedPayment,
+    cashier_id: user?.id,
+    cashier_email: user?.email,
+  })
+  .select().single()
 
       if (saleErr || !sale) throw new Error(saleErr?.message || 'Failed to create sale')
 
