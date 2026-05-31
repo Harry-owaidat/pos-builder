@@ -22,32 +22,54 @@ export function MembersManager({ store, initialMembers }: Props) {
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
   async function handleInvite(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
     setError('')
+    setSuccess('')
 
     const supabase = createClient()
+    const trimmedEmail = email.trim().toLowerCase()
 
-    const { data, error } = await supabase
+    // Add to store_members
+    const { data, error: memberError } = await supabase
       .from('store_members')
       .insert({
         store_id: store.id,
-        invited_email: email.trim().toLowerCase(),
+        invited_email: trimmedEmail,
         role: 'cashier',
         status: 'pending',
       })
       .select()
       .single()
 
-    if (error) {
-      setError(error.message)
-    } else if (data) {
+    if (memberError) {
+      setError(memberError.message)
+      setLoading(false)
+      return
+    }
+
+    // Send invitation email
+    const res = await fetch('/api/invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: trimmedEmail }),
+    })
+
+    if (res.ok) {
       setMembers((prev) => [data as StoreMember, ...prev])
       setEmail('')
       setShowForm(false)
+      setSuccess('Invitation sent successfully!')
+    } else {
+      // Member added but email failed — still show them
+      setMembers((prev) => [data as StoreMember, ...prev])
+      setEmail('')
+      setShowForm(false)
+      setSuccess('Cashier added! Ask them to register with this email.')
     }
 
     setLoading(false)
@@ -82,6 +104,12 @@ export function MembersManager({ store, initialMembers }: Props) {
         </div>
       </div>
 
+      {success && (
+        <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm px-4 py-3 rounded-xl mb-4">
+          ✓ {success}
+        </div>
+      )}
+
       {/* Invite Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -104,7 +132,7 @@ export function MembersManager({ store, initialMembers }: Props) {
                 required
               />
               <p className="text-xs text-surface-500">
-                The cashier must register with this email on the platform first.
+                An invitation email will be sent to this address.
               </p>
 
               {error && (
@@ -115,7 +143,7 @@ export function MembersManager({ store, initialMembers }: Props) {
 
               <div className="flex gap-3 pt-2">
                 <Button type="button" variant="outline" className="flex-1" onClick={() => setShowForm(false)}>Cancel</Button>
-                <Button type="submit" className="flex-1" loading={loading}>Add Cashier</Button>
+                <Button type="submit" className="flex-1" loading={loading}>Send Invite</Button>
               </div>
             </form>
           </div>
