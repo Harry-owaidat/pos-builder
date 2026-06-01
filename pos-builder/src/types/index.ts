@@ -32,6 +32,8 @@ export interface Sale {
   total: number
   items_count: number
   payment_method: PaymentMethod
+  cashier_id?: string
+  cashier_email?: string
   created_at: string
 }
 
@@ -52,6 +54,7 @@ export interface StoreMember {
   role: MemberRole
   invited_email: string
   status: MemberStatus
+  name?: string
   created_at: string
 }
 
