@@ -20,8 +20,8 @@ export async function DELETE(request: Request) {
   } else if (email) {
     // Find by email and delete
     const { data } = await supabase.auth.admin.listUsers()
-    const found = data?.users?.find((u: { email: string; id: string }) => u.email === email.toLowerCase())
-    if (found) {
+const found = data?.users?.find((u) => u.email === email.toLowerCase())   
+ if (found) {
       await supabase.auth.admin.deleteUser(found.id)
     }
   }
