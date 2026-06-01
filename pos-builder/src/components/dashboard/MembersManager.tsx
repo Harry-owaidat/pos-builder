@@ -4,10 +4,11 @@ import { useState } from 'react'
 import Link from 'next/link'
 import { ArrowLeft, Plus, Trash2, X, ShoppingCart, Mail, Pencil, Search } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
-import type { Store, StoreMember } from '@/types'
+import type { Store, StoreMember, MemberRole } from '@/types'
 import { STORE_TYPE_ICONS } from '@/lib/utils'
 import { Button } from '@/components/ui/Button'
 import { Input } from '@/components/ui/Input'
+import { Select } from '@/components/ui/Select'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 
@@ -16,20 +17,27 @@ interface Props {
   initialMembers: StoreMember[]
 }
 
-interface CashierForm {
+interface MemberForm {
   name: string
   email: string
   password: string
+  role: MemberRole
 }
 
-const emptyForm: CashierForm = { name: '', email: '', password: '' }
+const emptyForm: MemberForm = { name: '', email: '', password: '', role: 'cashier' }
+
+const ROLE_CONFIG = {
+  admin: { label: 'Admin', color: 'danger' as const, emoji: '👑' },
+  manager: { label: 'Manager', color: 'warning' as const, emoji: '👔' },
+  cashier: { label: 'Cashier', color: 'info' as const, emoji: '💼' },
+}
 
 export function MembersManager({ store, initialMembers }: Props) {
   const [members, setMembers] = useState<StoreMember[]>(initialMembers)
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
   const [editingMember, setEditingMember] = useState<StoreMember | null>(null)
-  const [form, setForm] = useState<CashierForm>(emptyForm)
+  const [form, setForm] = useState<MemberForm>(emptyForm)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [deletingId, setDeletingId] = useState<string | null>(null)
@@ -38,6 +46,10 @@ export function MembersManager({ store, initialMembers }: Props) {
     m.invited_email.toLowerCase().includes(search.toLowerCase()) ||
     (m.name && m.name.toLowerCase().includes(search.toLowerCase()))
   )
+
+  const adminCount = members.filter(m => m.role === 'admin').length
+  const managerCount = members.filter(m => m.role === 'manager').length
+  const cashierCount = members.filter(m => m.role === 'cashier').length
 
   function openAdd() {
     setEditingMember(null)
@@ -48,7 +60,12 @@ export function MembersManager({ store, initialMembers }: Props) {
 
   function openEdit(member: StoreMember) {
     setEditingMember(member)
-    setForm({ name: member.name || '', email: member.invited_email, password: '' })
+    setForm({
+      name: member.name || '',
+      email: member.invited_email,
+      password: '',
+      role: member.role,
+    })
     setError('')
     setShowForm(true)
   }
@@ -75,12 +92,13 @@ export function MembersManager({ store, initialMembers }: Props) {
           name: form.name.trim(),
           email: form.email.trim().toLowerCase(),
           password: form.password || undefined,
+          role: form.role,
         }),
       })
 
       if (res.ok) {
         setMembers(prev => prev.map(m => m.id === editingMember.id
-          ? { ...m, name: form.name.trim(), invited_email: form.email.trim().toLowerCase() }
+          ? { ...m, name: form.name.trim(), invited_email: form.email.trim().toLowerCase(), role: form.role }
           : m
         ))
         closeForm()
@@ -97,7 +115,7 @@ export function MembersManager({ store, initialMembers }: Props) {
         .insert({
           store_id: store.id,
           invited_email: trimmedEmail,
-          role: 'cashier',
+          role: form.role,
           status: 'active',
           name: form.name.trim(),
         })
@@ -158,6 +176,7 @@ export function MembersManager({ store, initialMembers }: Props) {
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
+      {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <Link href="/dashboard" className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 transition-colors">
           <ArrowLeft size={18} />
@@ -173,16 +192,38 @@ export function MembersManager({ store, initialMembers }: Props) {
           <Link href={`/store/${store.id}/pos`}>
             <Button variant="outline" size="sm"><ShoppingCart size={14} />Open POS</Button>
           </Link>
-          <Button onClick={openAdd} size="sm"><Plus size={14} />Add Cashier</Button>
+          <Button onClick={openAdd} size="sm"><Plus size={14} />Add Member</Button>
         </div>
       </div>
 
+      {/* Stats */}
+      {members.length > 0 && (
+        <div className="grid grid-cols-3 gap-3 mb-4">
+          <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-3 text-center">
+            <p className="text-lg">👑</p>
+            <p className="font-bold text-surface-900 dark:text-surface-100 text-sm">{adminCount}</p>
+            <p className="text-xs text-surface-500">Admins</p>
+          </div>
+          <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-3 text-center">
+            <p className="text-lg">👔</p>
+            <p className="font-bold text-surface-900 dark:text-surface-100 text-sm">{managerCount}</p>
+            <p className="text-xs text-surface-500">Managers</p>
+          </div>
+          <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-3 text-center">
+            <p className="text-lg">💼</p>
+            <p className="font-bold text-surface-900 dark:text-surface-100 text-sm">{cashierCount}</p>
+            <p className="text-xs text-surface-500">Cashiers</p>
+          </div>
+        </div>
+      )}
+
+      {/* Search */}
       {members.length > 0 && (
         <div className="relative mb-4">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
           <input
             type="text"
-            placeholder="Search cashiers..."
+            placeholder="Search members..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-surface-200 dark:border-surface-700 bg-white dark:bg-surface-900 text-sm text-surface-900 dark:text-surface-100 outline-none focus:ring-2 focus:ring-brand-500/30 focus:border-brand-400 transition-all"
@@ -190,13 +231,14 @@ export function MembersManager({ store, initialMembers }: Props) {
         </div>
       )}
 
+      {/* Form Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeForm} />
           <div className="relative bg-white dark:bg-surface-900 rounded-3xl shadow-2xl p-6 w-full max-w-md border border-surface-100 dark:border-surface-800 animate-scale-in">
             <div className="flex items-center justify-between mb-5">
               <h2 className="font-display text-xl font-bold text-surface-900 dark:text-surface-100">
-                {editingMember ? 'Edit Cashier' : 'Add Cashier'}
+                {editingMember ? 'Edit Member' : 'Add Member'}
               </h2>
               <button onClick={closeForm} className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 transition-colors">
                 <X size={16} />
@@ -205,7 +247,7 @@ export function MembersManager({ store, initialMembers }: Props) {
 
             <form onSubmit={handleSubmit} className="space-y-4">
               <Input label="Full Name" type="text" placeholder="e.g. Ahmed Mohammed" value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} required />
-              <Input label="Email" type="email" placeholder="cashier@example.com" value={form.email} onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))} required />
+              <Input label="Email" type="email" placeholder="member@example.com" value={form.email} onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))} required />
               <Input
                 label={editingMember ? 'New Password (leave empty to keep current)' : 'Password'}
                 type="password"
@@ -213,6 +255,16 @@ export function MembersManager({ store, initialMembers }: Props) {
                 value={form.password}
                 onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))}
                 required={!editingMember}
+              />
+              <Select
+                label="Role"
+                value={form.role}
+                onChange={(e) => setForm(f => ({ ...f, role: e.target.value as MemberRole }))}
+                options={[
+                  { value: 'cashier', label: '💼 Cashier' },
+                  { value: 'manager', label: '👔 Manager' },
+                  { value: 'admin', label: '👑 Admin' },
+                ]}
               />
 
               {error && (
@@ -222,7 +274,7 @@ export function MembersManager({ store, initialMembers }: Props) {
               <div className="flex gap-3 pt-2">
                 <Button type="button" variant="outline" className="flex-1" onClick={closeForm}>Cancel</Button>
                 <Button type="submit" className="flex-1" loading={loading}>
-                  {editingMember ? 'Save Changes' : 'Add Cashier'}
+                  {editingMember ? 'Save Changes' : 'Add Member'}
                 </Button>
               </div>
             </form>
@@ -230,59 +282,67 @@ export function MembersManager({ store, initialMembers }: Props) {
         </div>
       )}
 
+      {/* Members List */}
       {members.length === 0 ? (
         <Card variant="bordered">
           <CardContent className="py-16 text-center">
             <div className="text-5xl mb-4">👥</div>
-            <h3 className="font-display text-lg font-bold text-surface-800 dark:text-surface-200 mb-2">No cashiers yet</h3>
-            <p className="text-sm text-surface-500 mb-6">Add your first cashier to get started</p>
-            <Button onClick={openAdd}><Plus size={16} />Add Cashier</Button>
+            <h3 className="font-display text-lg font-bold text-surface-800 dark:text-surface-200 mb-2">No members yet</h3>
+            <p className="text-sm text-surface-500 mb-6">Add your first team member</p>
+            <Button onClick={openAdd}><Plus size={16} />Add Member</Button>
           </CardContent>
         </Card>
       ) : filteredMembers.length === 0 ? (
-        <div className="text-center py-12 text-surface-400 text-sm">No cashiers matching "{search}"</div>
+        <div className="text-center py-12 text-surface-400 text-sm">No members matching "{search}"</div>
       ) : (
         <div className="space-y-2">
           <p className="text-xs text-surface-500 uppercase tracking-wider font-semibold mb-3">
-            {filteredMembers.length} cashier{filteredMembers.length !== 1 ? 's' : ''}
+            {filteredMembers.length} member{filteredMembers.length !== 1 ? 's' : ''}
           </p>
-          {filteredMembers.map((member) => (
-            <Card key={member.id} className="hover:shadow-sm transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
-                    {(member.name || member.invited_email)[0].toUpperCase()}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-surface-900 dark:text-surface-100 text-sm">{member.name || 'No name'}</p>
-                    <div className="flex items-center gap-1 mt-0.5">
-                      <Mail size={11} className="text-surface-400" />
-                      <span className="text-xs text-surface-500 truncate">{member.invited_email}</span>
+          {filteredMembers.map((member) => {
+            const roleConfig = ROLE_CONFIG[member.role]
+            return (
+              <Card key={member.id} className="hover:shadow-sm transition-shadow">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-4">
+                    <div className={`w-11 h-11 rounded-xl flex items-center justify-center text-xl shrink-0 ${
+                      member.role === 'admin' ? 'bg-red-100 dark:bg-red-900/30' :
+                      member.role === 'manager' ? 'bg-amber-100 dark:bg-amber-900/30' :
+                      'bg-brand-100 dark:bg-brand-900/30'
+                    }`}>
+                      {roleConfig.emoji}
                     </div>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <Badge variant="info">{member.role}</Badge>
-                      <Badge variant={member.status === 'active' ? 'success' : 'warning'}>{member.status}</Badge>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-semibold text-surface-900 dark:text-surface-100 text-sm">{member.name || 'No name'}</p>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Mail size={11} className="text-surface-400" />
+                        <span className="text-xs text-surface-500 truncate">{member.invited_email}</span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-1.5">
+                        <Badge variant={roleConfig.color}>{roleConfig.label}</Badge>
+                        <Badge variant={member.status === 'active' ? 'success' : 'warning'}>{member.status}</Badge>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <button onClick={() => openEdit(member)} className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-brand-50 dark:hover:bg-brand-900/20 text-surface-400 hover:text-brand-600 transition-colors">
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(member)}
+                        disabled={deletingId === member.id}
+                        className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-900/20 text-surface-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                      >
+                        {deletingId === member.id
+                          ? <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                          : <Trash2 size={14} />
+                        }
+                      </button>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <button onClick={() => openEdit(member)} className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-brand-50 dark:hover:bg-brand-900/20 text-surface-400 hover:text-brand-600 transition-colors">
-                      <Pencil size={14} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(member)}
-                      disabled={deletingId === member.id}
-                      className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-900/20 text-surface-400 hover:text-red-600 transition-colors disabled:opacity-50"
-                    >
-                      {deletingId === member.id
-                        ? <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                        : <Trash2 size={14} />
-                      }
-                    </button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            )
+          })}
         </div>
       )}
     </div>

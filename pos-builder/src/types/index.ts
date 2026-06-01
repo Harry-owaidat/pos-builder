@@ -1,7 +1,7 @@
 export type StoreType = 'restaurant' | 'pharmacy' | 'retail'
 export type Theme = 'light' | 'dark'
 export type PaymentMethod = 'cash' | 'card' | 'qr'
-export type MemberRole = 'admin' | 'cashier'
+export type MemberRole = 'admin' | 'manager' | 'cashier'
 export type MemberStatus = 'pending' | 'active'
 export type ExpenseCategory = 'rent' | 'salary' | 'utilities' | 'supplies' | 'other'
 export type InvoiceStatus = 'paid' | 'partial' | 'unpaid'
