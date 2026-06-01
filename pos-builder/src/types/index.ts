@@ -62,3 +62,15 @@ export interface CartItem {
   product: Product
   qty: number
 }
+export type ExpenseCategory = 'rent' | 'salary' | 'utilities' | 'supplies' | 'other'
+
+export interface Expense {
+  id: string
+  store_id: string
+  description: string
+  amount: number
+  category: ExpenseCategory
+  notes?: string
+  created_at: string
+  updated_at: string
+}

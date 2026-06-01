@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { LayoutDashboard, LogOut, ShoppingCart, Package, Users, BarChart2 } from 'lucide-react'
+import { LayoutDashboard, LogOut, ShoppingCart, Package, Users, BarChart2, Receipt } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
 import type { Store as StoreType } from '@/types'
@@ -51,6 +51,7 @@ export function DashboardSidebar({ user, stores }: Props) {
                   <NavItem href={`/store/${store.id}/products`} icon={<Package size={14} />} label="Products" active={pathname === `/store/${store.id}/products`} small />
                   <NavItem href={`/store/${store.id}/members`} icon={<Users size={14} />} label="Team Members" active={pathname === `/store/${store.id}/members`} small />
                   <NavItem href={`/store/${store.id}/sales`} icon={<BarChart2 size={14} />} label="Sales Report" active={pathname === `/store/${store.id}/sales`} small />
+                  <NavItem href={`/store/${store.id}/expenses`} icon={<Receipt size={14} />} label="Expenses" active={pathname === `/store/${store.id}/expenses`} small />
                 </div>
               </div>
             ))}
