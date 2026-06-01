@@ -3,6 +3,8 @@ export type Theme = 'light' | 'dark'
 export type PaymentMethod = 'cash' | 'card' | 'qr'
 export type MemberRole = 'admin' | 'cashier'
 export type MemberStatus = 'pending' | 'active'
+export type ExpenseCategory = 'rent' | 'salary' | 'utilities' | 'supplies' | 'other'
+export type InvoiceStatus = 'paid' | 'partial' | 'unpaid'
 
 export interface Store {
   id: string
@@ -62,7 +64,6 @@ export interface CartItem {
   product: Product
   qty: number
 }
-export type ExpenseCategory = 'rent' | 'salary' | 'utilities' | 'supplies' | 'other'
 
 export interface Expense {
   id: string
@@ -70,6 +71,32 @@ export interface Expense {
   description: string
   amount: number
   category: ExpenseCategory
+  notes?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface Supplier {
+  id: string
+  store_id: string
+  name: string
+  company?: string
+  phone?: string
+  email?: string
+  notes?: string
+  created_at: string
+  updated_at: string
+}
+
+export interface SupplierInvoice {
+  id: string
+  supplier_id: string
+  store_id: string
+  invoice_number?: string
+  total_amount: number
+  paid_amount: number
+  due_date?: string
+  status: InvoiceStatus
   notes?: string
   created_at: string
   updated_at: string
