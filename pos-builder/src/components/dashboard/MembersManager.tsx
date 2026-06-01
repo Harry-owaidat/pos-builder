@@ -19,7 +19,9 @@ interface Props {
 export function MembersManager({ store, initialMembers }: Props) {
   const [members, setMembers] = useState<StoreMember[]>(initialMembers)
   const [showForm, setShowForm] = useState(false)
+  const [name, setName] = useState('')
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -34,7 +36,7 @@ export function MembersManager({ store, initialMembers }: Props) {
     const supabase = createClient()
     const trimmedEmail = email.trim().toLowerCase()
 
-    // Add to store_members
+    // Add to store_members first
     const { data, error: memberError } = await supabase
       .from('store_members')
       .insert({
@@ -42,6 +44,7 @@ export function MembersManager({ store, initialMembers }: Props) {
         invited_email: trimmedEmail,
         role: 'cashier',
         status: 'pending',
+        name: name.trim(),
       })
       .select()
       .single()
@@ -52,26 +55,31 @@ export function MembersManager({ store, initialMembers }: Props) {
       return
     }
 
-    // Send invitation email
+    // Create account via API
     const res = await fetch('/api/invite', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email: trimmedEmail }),
+      body: JSON.stringify({
+        email: trimmedEmail,
+        password,
+        name: name.trim(),
+      }),
     })
 
-    if (res.ok) {
-      setMembers((prev) => [data as StoreMember, ...prev])
-      setEmail('')
-      setShowForm(false)
-      setSuccess('Invitation sent successfully!')
-    } else {
-      // Member added but email failed — still show them
-      setMembers((prev) => [data as StoreMember, ...prev])
-      setEmail('')
-      setShowForm(false)
-      setSuccess('Cashier added! Ask them to register with this email.')
+    const result = await res.json()
+
+    if (!res.ok) {
+      setError(result.error || 'Failed to create account')
+      setLoading(false)
+      return
     }
 
+    setMembers((prev) => [{ ...data, status: 'active' } as StoreMember, ...prev])
+    setName('')
+    setEmail('')
+    setPassword('')
+    setShowForm(false)
+    setSuccess(`✓ Cashier ${name} added successfully!`)
     setLoading(false)
   }
 
@@ -106,7 +114,7 @@ export function MembersManager({ store, initialMembers }: Props) {
 
       {success && (
         <div className="bg-emerald-50 border border-emerald-200 text-emerald-700 text-sm px-4 py-3 rounded-xl mb-4">
-          ✓ {success}
+          {success}
         </div>
       )}
 
@@ -124,15 +132,31 @@ export function MembersManager({ store, initialMembers }: Props) {
 
             <form onSubmit={handleInvite} className="space-y-4">
               <Input
-                label="Cashier Email"
+                label="Full Name"
+                type="text"
+                placeholder="e.g. Ahmed Mohammed"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+              />
+              <Input
+                label="Email"
                 type="email"
                 placeholder="cashier@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
               />
+              <Input
+                label="Password"
+                type="password"
+                placeholder="At least 6 characters"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
               <p className="text-xs text-surface-500">
-                An invitation email will be sent to this address.
+                The cashier can change their password later from their profile.
               </p>
 
               {error && (
@@ -143,7 +167,7 @@ export function MembersManager({ store, initialMembers }: Props) {
 
               <div className="flex gap-3 pt-2">
                 <Button type="button" variant="outline" className="flex-1" onClick={() => setShowForm(false)}>Cancel</Button>
-                <Button type="submit" className="flex-1" loading={loading}>Send Invite</Button>
+                <Button type="submit" className="flex-1" loading={loading}>Add Cashier</Button>
               </div>
             </form>
           </div>
@@ -169,15 +193,16 @@ export function MembersManager({ store, initialMembers }: Props) {
             <Card key={member.id} className="hover:shadow-sm transition-shadow">
               <CardContent className="p-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center">
-                    <Users size={18} className="text-brand-600" />
+                  <div className="w-10 h-10 rounded-xl bg-brand-100 dark:bg-brand-900/30 flex items-center justify-center text-lg font-bold text-brand-600">
+                    {(member.name || member.invited_email)?.[0]?.toUpperCase() || '?'}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <Mail size={13} className="text-surface-400" />
-                      <span className="font-semibold text-surface-900 dark:text-surface-100 text-sm truncate">
-                        {member.invited_email}
-                      </span>
+                    <p className="font-semibold text-surface-900 dark:text-surface-100 text-sm">
+                      {member.name || 'No name'}
+                    </p>
+                    <div className="flex items-center gap-1 mt-0.5">
+                      <Mail size={11} className="text-surface-400" />
+                      <span className="text-xs text-surface-500 truncate">{member.invited_email}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-1">
                       <Badge variant="info">{member.role}</Badge>
