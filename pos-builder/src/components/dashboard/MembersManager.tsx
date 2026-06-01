@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Plus, Trash2, X, Users, ShoppingCart, Mail, Pencil, Search, Lock } from 'lucide-react'
+import { ArrowLeft, Plus, Trash2, X, ShoppingCart, Mail, Pencil, Search } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { Store, StoreMember } from '@/types'
 import { STORE_TYPE_ICONS } from '@/lib/utils'
@@ -66,7 +66,6 @@ export function MembersManager({ store, initialMembers }: Props) {
     setError('')
 
     if (editingMember) {
-      // UPDATE
       const res = await fetch('/api/cashier', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
@@ -90,7 +89,6 @@ export function MembersManager({ store, initialMembers }: Props) {
         setError(data.error || 'Failed to update')
       }
     } else {
-      // ADD NEW
       const supabase = createClient()
       const trimmedEmail = form.email.trim().toLowerCase()
 
@@ -144,11 +142,15 @@ export function MembersManager({ store, initialMembers }: Props) {
       body: JSON.stringify({
         member_id: member.id,
         user_id: member.user_id,
+        email: member.invited_email,
       }),
     })
 
     if (res.ok) {
       setMembers(prev => prev.filter(m => m.id !== member.id))
+    } else {
+      const data = await res.json()
+      alert(data.error || 'Failed to delete')
     }
 
     setDeletingId(null)
@@ -156,7 +158,6 @@ export function MembersManager({ store, initialMembers }: Props) {
 
   return (
     <div className="p-6 max-w-3xl mx-auto">
-      {/* Header */}
       <div className="flex items-center gap-4 mb-6">
         <Link href="/dashboard" className="w-9 h-9 rounded-xl flex items-center justify-center hover:bg-surface-100 dark:hover:bg-surface-800 text-surface-500 transition-colors">
           <ArrowLeft size={18} />
@@ -176,7 +177,6 @@ export function MembersManager({ store, initialMembers }: Props) {
         </div>
       </div>
 
-      {/* Search */}
       {members.length > 0 && (
         <div className="relative mb-4">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-surface-400" />
@@ -190,7 +190,6 @@ export function MembersManager({ store, initialMembers }: Props) {
         </div>
       )}
 
-      {/* Form Modal */}
       {showForm && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeForm} />
@@ -205,22 +204,8 @@ export function MembersManager({ store, initialMembers }: Props) {
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
-              <Input
-                label="Full Name"
-                type="text"
-                placeholder="e.g. Ahmed Mohammed"
-                value={form.name}
-                onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))}
-                required
-              />
-              <Input
-                label="Email"
-                type="email"
-                placeholder="cashier@example.com"
-                value={form.email}
-                onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))}
-                required
-              />
+              <Input label="Full Name" type="text" placeholder="e.g. Ahmed Mohammed" value={form.name} onChange={(e) => setForm(f => ({ ...f, name: e.target.value }))} required />
+              <Input label="Email" type="email" placeholder="cashier@example.com" value={form.email} onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))} required />
               <Input
                 label={editingMember ? 'New Password (leave empty to keep current)' : 'Password'}
                 type="password"
@@ -231,9 +216,7 @@ export function MembersManager({ store, initialMembers }: Props) {
               />
 
               {error && (
-                <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800">
-                  {error}
-                </div>
+                <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800">{error}</div>
               )}
 
               <div className="flex gap-3 pt-2">
@@ -247,7 +230,6 @@ export function MembersManager({ store, initialMembers }: Props) {
         </div>
       )}
 
-      {/* Members List */}
       {members.length === 0 ? (
         <Card variant="bordered">
           <CardContent className="py-16 text-center">
@@ -268,42 +250,28 @@ export function MembersManager({ store, initialMembers }: Props) {
             <Card key={member.id} className="hover:shadow-sm transition-shadow">
               <CardContent className="p-4">
                 <div className="flex items-center gap-4">
-                  {/* Avatar */}
                   <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-brand-400 to-brand-600 flex items-center justify-center text-white font-bold text-lg shrink-0">
                     {(member.name || member.invited_email)[0].toUpperCase()}
                   </div>
-
-                  {/* Info */}
                   <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-surface-900 dark:text-surface-100 text-sm">
-                      {member.name || 'No name'}
-                    </p>
+                    <p className="font-semibold text-surface-900 dark:text-surface-100 text-sm">{member.name || 'No name'}</p>
                     <div className="flex items-center gap-1 mt-0.5">
                       <Mail size={11} className="text-surface-400" />
                       <span className="text-xs text-surface-500 truncate">{member.invited_email}</span>
                     </div>
                     <div className="flex items-center gap-2 mt-1.5">
                       <Badge variant="info">{member.role}</Badge>
-                      <Badge variant={member.status === 'active' ? 'success' : 'warning'}>
-                        {member.status}
-                      </Badge>
+                      <Badge variant={member.status === 'active' ? 'success' : 'warning'}>{member.status}</Badge>
                     </div>
                   </div>
-
-                  {/* Actions */}
                   <div className="flex items-center gap-1.5 shrink-0">
-                    <button
-                      onClick={() => openEdit(member)}
-                      className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-brand-50 dark:hover:bg-brand-900/20 text-surface-400 hover:text-brand-600 transition-colors"
-                      title="Edit cashier"
-                    >
+                    <button onClick={() => openEdit(member)} className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-brand-50 dark:hover:bg-brand-900/20 text-surface-400 hover:text-brand-600 transition-colors">
                       <Pencil size={14} />
                     </button>
                     <button
                       onClick={() => handleDelete(member)}
                       disabled={deletingId === member.id}
                       className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-900/20 text-surface-400 hover:text-red-600 transition-colors disabled:opacity-50"
-                      title="Delete cashier"
                     >
                       {deletingId === member.id
                         ? <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
