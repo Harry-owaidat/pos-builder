@@ -13,7 +13,9 @@ export default async function POSPage({ params }: Props) {
 
   if (!user) redirect('/auth/login')
 
-  // Check if admin or member
+  const adminClient = createAdminClient()
+
+  // Check if admin
   const { data: ownStore } = await supabase
     .from('stores')
     .select('*')
@@ -21,7 +23,8 @@ export default async function POSPage({ params }: Props) {
     .eq('user_id', user.id)
     .single()
 
-  const { data: membership } = await supabase
+  // Check if member using admin client
+  const { data: membership } = await adminClient
     .from('store_members')
     .select('role')
     .eq('store_id', id)
@@ -31,10 +34,9 @@ export default async function POSPage({ params }: Props) {
 
   if (!ownStore && !membership) notFound()
 
-  // Get store using admin client if member
+  // Get store
   let store = ownStore
   if (!store) {
-    const adminClient = createAdminClient()
     const { data } = await adminClient
       .from('stores')
       .select('*')
