@@ -28,13 +28,26 @@ export function DashboardSidebar({ user, stores }: Props) {
 
   return (
     <aside className="w-64 shrink-0 bg-white dark:bg-surface-900 border-r border-surface-100 dark:border-surface-800 flex flex-col h-full">
-      <div className="px-5 py-5 border-b border-surface-100 dark:border-surface-800">
-        <div className="flex items-center gap-2.5">
+      
+      {/* Header - Logo + User + Notifications */}
+      <div className="px-4 py-4 border-b border-surface-100 dark:border-surface-800">
+        {/* Logo */}
+        <div className="flex items-center gap-2.5 mb-4">
           <div className="w-8 h-8 rounded-lg bg-brand-600 flex items-center justify-center text-white font-bold text-sm">P</div>
           <span className="font-display font-bold text-base tracking-tight text-surface-900 dark:text-white">POS Builder</span>
         </div>
+
+        {/* User + Notifications */}
+        <div className="flex items-center justify-between bg-surface-50 dark:bg-surface-800 rounded-xl px-3 py-2.5">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-surface-700 dark:text-surface-300 truncate">{user.email}</p>
+            <p className="text-xs text-surface-400">Free plan</p>
+          </div>
+          <NotificationBell storeIds={stores.map(s => s.id)} />
+        </div>
       </div>
 
+      {/* Nav */}
       <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
         <NavItem href="/dashboard" icon={<LayoutDashboard size={16} />} label="Overview" active={pathname === '/dashboard'} />
 
@@ -61,14 +74,8 @@ export function DashboardSidebar({ user, stores }: Props) {
         )}
       </nav>
 
-      <div className="px-3 py-3 border-t border-surface-100 dark:border-surface-800 space-y-1">
-        <div className="px-3 py-2 flex items-center justify-between">
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-medium text-surface-700 dark:text-surface-300 truncate">{user.email}</p>
-            <p className="text-xs text-surface-400">Free plan</p>
-          </div>
-          <NotificationBell storeIds={stores.map(s => s.id)} />
-        </div>
+      {/* Footer - Sign Out */}
+      <div className="px-3 py-3 border-t border-surface-100 dark:border-surface-800">
         <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-surface-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
           <LogOut size={15} />
           Sign Out
