@@ -47,7 +47,7 @@ export function CreateStoreModal() {
         setName('')
         setType('retail')
         setTheme('light')
-        router.refresh()
+        window.location.reload()
       }
     } catch (err) {
       setError('Something went wrong')
