@@ -8,30 +8,44 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user) redirect('/auth/login')
 
-  const { data: storesRaw } = await supabase
+  // Check membership first
+  const { data: membership } = await supabase
+    .from('store_members')
+    .select('store_id, role')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .single()
+
+  // Cashier → POS only
+  if (membership?.role === 'cashier') {
+    redirect(`/store/${membership.store_id}/pos`)
+  }
+
+  // Get own stores (admin)
+  const { data: ownStores } = await supabase
     .from('stores')
     .select('*')
     .order('created_at', { ascending: false })
 
-  const stores = storesRaw || []
+  let stores = ownStores || []
+  let userRole: 'admin' | 'manager' | 'cashier' = 'admin'
 
-  // If cashier - redirect to their POS
-  if (stores.length === 0) {
-    const { data: membership } = await supabase
-      .from('store_members')
-      .select('store_id')
-      .eq('user_id', user.id)
-      .eq('status', 'active')
-      .single()
-
-    if (membership) {
-      redirect(`/store/${membership.store_id}/pos`)
+  // Manager - get their store
+  if (membership?.role === 'manager') {
+    userRole = 'manager'
+    if (stores.length === 0) {
+      const { data: memberStore } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('id', membership.store_id)
+        .single()
+      if (memberStore) stores = [memberStore]
     }
   }
 
   return (
     <div className="flex h-screen bg-surface-50 dark:bg-surface-950 overflow-hidden">
-      <DashboardSidebar user={user as any} stores={stores as any} />
+      <DashboardSidebar user={user as any} stores={stores as any} userRole={userRole} />
       <main className="flex-1 overflow-auto">
         {children}
       </main>
