@@ -8,8 +8,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user) redirect('/auth/login')
 
-  // Check membership first
-  const { data: membership } = await supabase
+  // Use admin client to check membership (bypass RLS)
+  const adminClient = createAdminClient()
+  const { data: membership } = await adminClient
     .from('store_members')
     .select('store_id, role')
     .eq('user_id', user.id)
@@ -34,7 +35,6 @@ export default async function DashboardLayout({ children }: { children: React.Re
   if (membership?.role === 'manager') {
     userRole = 'manager'
     if (stores.length === 0) {
-      const adminClient = createAdminClient()
       const { data: memberStore } = await adminClient
         .from('stores')
         .select('*')
