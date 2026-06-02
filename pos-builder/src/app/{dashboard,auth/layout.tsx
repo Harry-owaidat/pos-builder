@@ -8,6 +8,19 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user) redirect('/auth/login')
 
+  // First check membership role
+  const { data: membership } = await supabase
+    .from('store_members')
+    .select('store_id, role')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .single()
+
+  // Cashier → POS only
+  if (membership?.role === 'cashier') {
+    redirect(`/store/${membership.store_id}/pos`)
+  }
+
   // Check if owner (has own stores)
   const { data: ownStores } = await supabase
     .from('stores')
@@ -17,29 +30,14 @@ export default async function DashboardLayout({ children }: { children: React.Re
   let stores = ownStores || []
   let userRole: 'admin' | 'manager' | 'cashier' = 'admin'
 
-  if (stores.length === 0) {
-    // Check membership
-    const { data: membership } = await supabase
-      .from('store_members')
-      .select('store_id, role')
-      .eq('user_id', user.id)
-      .eq('status', 'active')
-      .single()
-
-    if (membership) {
-      if (membership.role === 'cashier') {
-        redirect(`/store/${membership.store_id}/pos`)
-      }
-
-      userRole = membership.role as 'manager'
-
-      // Get the store they belong to
+  if (membership?.role === 'manager') {
+    userRole = 'manager'
+    if (stores.length === 0) {
       const { data: memberStore } = await supabase
         .from('stores')
         .select('*')
         .eq('id', membership.store_id)
         .single()
-
       if (memberStore) stores = [memberStore]
     }
   }
