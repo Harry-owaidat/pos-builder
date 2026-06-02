@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/Badge'
 interface Props {
   store: Store
   initialMembers: StoreMember[]
+  isAdmin: boolean
 }
 
 interface MemberForm {
@@ -32,7 +33,7 @@ const ROLE_CONFIG = {
   cashier: { label: 'Cashier', color: 'info' as const, emoji: '💼' },
 }
 
-export function MembersManager({ store, initialMembers }: Props) {
+export function MembersManager({ store, initialMembers, isAdmin }: Props) {
   const [members, setMembers] = useState<StoreMember[]>(initialMembers)
   const [search, setSearch] = useState('')
   const [showForm, setShowForm] = useState(false)
@@ -192,7 +193,9 @@ export function MembersManager({ store, initialMembers }: Props) {
           <Link href={`/store/${store.id}/pos`}>
             <Button variant="outline" size="sm"><ShoppingCart size={14} />Open POS</Button>
           </Link>
-          <Button onClick={openAdd} size="sm"><Plus size={14} />Add Member</Button>
+          {isAdmin && (
+            <Button onClick={openAdd} size="sm"><Plus size={14} />Add Member</Button>
+          )}
         </div>
       </div>
 
@@ -231,8 +234,8 @@ export function MembersManager({ store, initialMembers }: Props) {
         </div>
       )}
 
-      {/* Form Modal */}
-      {showForm && (
+      {/* Form Modal - Admin Only */}
+      {showForm && isAdmin && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={closeForm} />
           <div className="relative bg-white dark:bg-surface-900 rounded-3xl shadow-2xl p-6 w-full max-w-md border border-surface-100 dark:border-surface-800 animate-scale-in">
@@ -289,7 +292,7 @@ export function MembersManager({ store, initialMembers }: Props) {
             <div className="text-5xl mb-4">👥</div>
             <h3 className="font-display text-lg font-bold text-surface-800 dark:text-surface-200 mb-2">No members yet</h3>
             <p className="text-sm text-surface-500 mb-6">Add your first team member</p>
-            <Button onClick={openAdd}><Plus size={16} />Add Member</Button>
+            {isAdmin && <Button onClick={openAdd}><Plus size={16} />Add Member</Button>}
           </CardContent>
         </Card>
       ) : filteredMembers.length === 0 ? (
@@ -323,21 +326,24 @@ export function MembersManager({ store, initialMembers }: Props) {
                         <Badge variant={member.status === 'active' ? 'success' : 'warning'}>{member.status}</Badge>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1.5 shrink-0">
-                      <button onClick={() => openEdit(member)} className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-brand-50 dark:hover:bg-brand-900/20 text-surface-400 hover:text-brand-600 transition-colors">
-                        <Pencil size={14} />
-                      </button>
-                      <button
-                        onClick={() => handleDelete(member)}
-                        disabled={deletingId === member.id}
-                        className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-900/20 text-surface-400 hover:text-red-600 transition-colors disabled:opacity-50"
-                      >
-                        {deletingId === member.id
-                          ? <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
-                          : <Trash2 size={14} />
-                        }
-                      </button>
-                    </div>
+                    {/* Actions - Admin Only */}
+                    {isAdmin && (
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <button onClick={() => openEdit(member)} className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-brand-50 dark:hover:bg-brand-900/20 text-surface-400 hover:text-brand-600 transition-colors">
+                          <Pencil size={14} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(member)}
+                          disabled={deletingId === member.id}
+                          className="w-8 h-8 rounded-xl flex items-center justify-center hover:bg-red-50 dark:hover:bg-red-900/20 text-surface-400 hover:text-red-600 transition-colors disabled:opacity-50"
+                        >
+                          {deletingId === member.id
+                            ? <svg className="animate-spin w-3.5 h-3.5" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" /></svg>
+                            : <Trash2 size={14} />
+                          }
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
