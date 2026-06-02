@@ -8,16 +8,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user) redirect('/auth/login')
 
-  const { data: storesRaw } = await supabase
+  // Check if owner (has own stores)
+  const { data: ownStores } = await supabase
     .from('stores')
     .select('*')
     .order('created_at', { ascending: false })
 
-  const stores = storesRaw || []
-
+  let stores = ownStores || []
   let userRole: 'admin' | 'manager' | 'cashier' = 'admin'
 
   if (stores.length === 0) {
+    // Check membership
     const { data: membership } = await supabase
       .from('store_members')
       .select('store_id, role')
@@ -29,7 +30,17 @@ export default async function DashboardLayout({ children }: { children: React.Re
       if (membership.role === 'cashier') {
         redirect(`/store/${membership.store_id}/pos`)
       }
+
       userRole = membership.role as 'manager'
+
+      // Get the store they belong to
+      const { data: memberStore } = await supabase
+        .from('stores')
+        .select('*')
+        .eq('id', membership.store_id)
+        .single()
+
+      if (memberStore) stores = [memberStore]
     }
   }
 
