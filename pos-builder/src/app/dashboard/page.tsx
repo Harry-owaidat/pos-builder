@@ -1,6 +1,6 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { Card, CardContent } from '@/components/ui/Card'
 import { Badge } from '@/components/ui/Badge'
 import { CreateStoreModal } from '@/components/dashboard/CreateStoreModal'
@@ -14,12 +14,35 @@ export default async function DashboardPage() {
 
   if (!user) redirect('/auth/login')
 
-  const { data: storesRaw } = await supabase
-    .from('stores')
-    .select('*')
-    .order('created_at', { ascending: false })
+  // Check role
+  const { data: membership } = await supabase
+    .from('store_members')
+    .select('store_id, role')
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .single()
 
-  const stores = (storesRaw || []) as Store[]
+  const isAdmin = !membership || membership.role === 'admin'
+  const isManager = membership?.role === 'manager'
+
+  // Get stores
+  let stores: Store[] = []
+
+  if (isAdmin) {
+    const { data: ownStores } = await supabase
+      .from('stores')
+      .select('*')
+      .order('created_at', { ascending: false })
+    stores = (ownStores || []) as Store[]
+  } else if (isManager && membership) {
+    const adminClient = createAdminClient()
+    const { data: memberStore } = await adminClient
+      .from('stores')
+      .select('*')
+      .eq('id', membership.store_id)
+      .single()
+    if (memberStore) stores = [memberStore as Store]
+  }
 
   const salesData: Record<string, number> = {}
   const salesTotals: Record<string, number> = {}
@@ -54,9 +77,12 @@ export default async function DashboardPage() {
       <div className="flex items-center justify-between mb-8">
         <div>
           <h1 className="font-display text-2xl font-bold text-surface-900 dark:text-surface-100">Dashboard</h1>
-          <p className="text-sm text-surface-500 mt-0.5">Manage your POS stores</p>
+          <p className="text-sm text-surface-500 mt-0.5">
+            {isManager ? 'Store Overview' : 'Manage your POS stores'}
+          </p>
         </div>
-        <CreateStoreModal />
+        {/* Only Admin can create stores */}
+        {isAdmin && <CreateStoreModal />}
       </div>
 
       {/* Stats */}
@@ -73,7 +99,7 @@ export default async function DashboardPage() {
             <div className="text-5xl mb-4">🏪</div>
             <h3 className="font-display text-lg font-bold text-surface-800 dark:text-surface-200 mb-2">No stores yet</h3>
             <p className="text-sm text-surface-500 mb-6">Create your first POS store to get started</p>
-            <CreateStoreModal />
+            {isAdmin && <CreateStoreModal />}
           </CardContent>
         </Card>
       ) : (
@@ -82,7 +108,6 @@ export default async function DashboardPage() {
           {stores.map((store) => (
             <Card key={store.id} className="overflow-hidden">
               <CardContent className="p-5">
-                {/* Store Header */}
                 <div className="flex items-start justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-xl bg-surface-100 dark:bg-surface-800 flex items-center justify-center text-xl">
@@ -96,7 +121,6 @@ export default async function DashboardPage() {
                   <Badge variant={store.theme === 'dark' ? 'default' : 'warning'}>{store.theme}</Badge>
                 </div>
 
-                {/* Sales Stats */}
                 <div className="grid grid-cols-2 gap-2 mb-3 text-center">
                   <div className="bg-surface-50 dark:bg-surface-800 rounded-xl p-2.5">
                     <div className="font-bold text-surface-900 dark:text-surface-100 text-sm">{salesData[store.id] || 0}</div>
@@ -108,7 +132,6 @@ export default async function DashboardPage() {
                   </div>
                 </div>
 
-                {/* Payment breakdown */}
                 {salesData[store.id] > 0 && (
                   <div className="grid grid-cols-3 gap-1.5 mb-3">
                     <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-xl p-2 text-center">
@@ -126,7 +149,6 @@ export default async function DashboardPage() {
                   </div>
                 )}
 
-                {/* Recent Sales */}
                 {recentSales[store.id]?.length > 0 && (
                   <div className="mb-3">
                     <p className="text-xs font-semibold text-surface-500 uppercase tracking-wider mb-2">Recent Sales</p>
@@ -155,7 +177,6 @@ export default async function DashboardPage() {
                   </div>
                 )}
 
-                {/* Actions */}
                 <div className="flex gap-2">
                   <Link href={`/store/${store.id}/pos`} className="flex-1 flex items-center justify-center gap-1.5 bg-brand-600 hover:bg-brand-700 text-white text-xs font-semibold py-2 px-3 rounded-xl transition-colors">
                     <ShoppingCart size={13} />Open POS
@@ -163,9 +184,12 @@ export default async function DashboardPage() {
                   <Link href={`/store/${store.id}/products`} className="flex-1 flex items-center justify-center gap-1.5 bg-surface-100 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300 text-xs font-semibold py-2 px-3 rounded-xl transition-colors">
                     <Package size={13} />Products
                   </Link>
-                  <Link href={`/store/${store.id}/members`} className="flex items-center justify-center gap-1.5 bg-surface-100 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300 text-xs font-semibold py-2 px-3 rounded-xl transition-colors">
-                    <Users size={13} />
-                  </Link>
+                  {/* Only Admin sees Members button */}
+                  {isAdmin && (
+                    <Link href={`/store/${store.id}/members`} className="flex items-center justify-center gap-1.5 bg-surface-100 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300 text-xs font-semibold py-2 px-3 rounded-xl transition-colors">
+                      <Users size={13} />
+                    </Link>
+                  )}
                 </div>
               </CardContent>
             </Card>
