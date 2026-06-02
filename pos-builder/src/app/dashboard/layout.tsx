@@ -1,5 +1,5 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { DashboardSidebar } from '@/components/dashboard/Sidebar'
 
 export default async function DashboardLayout({ children }: { children: React.ReactNode }) {
@@ -30,11 +30,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
   let stores = ownStores || []
   let userRole: 'admin' | 'manager' | 'cashier' = 'admin'
 
-  // Manager - get their store
+  // Manager - get their store using admin client
   if (membership?.role === 'manager') {
     userRole = 'manager'
     if (stores.length === 0) {
-      const { data: memberStore } = await supabase
+      const adminClient = createAdminClient()
+      const { data: memberStore } = await adminClient
         .from('stores')
         .select('*')
         .eq('id', membership.store_id)
