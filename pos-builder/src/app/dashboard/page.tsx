@@ -14,8 +14,10 @@ export default async function DashboardPage() {
 
   if (!user) redirect('/auth/login')
 
-  // Check role
-  const { data: membership } = await supabase
+  const adminClient = createAdminClient()
+
+  // Check role using admin client
+  const { data: membership } = await adminClient
     .from('store_members')
     .select('store_id, role')
     .eq('user_id', user.id)
@@ -35,7 +37,6 @@ export default async function DashboardPage() {
       .order('created_at', { ascending: false })
     stores = (ownStores || []) as Store[]
   } else if (isManager && membership) {
-    const adminClient = createAdminClient()
     const { data: memberStore } = await adminClient
       .from('stores')
       .select('*')
@@ -44,13 +45,14 @@ export default async function DashboardPage() {
     if (memberStore) stores = [memberStore as Store]
   }
 
+  // Get sales data for each store
   const salesData: Record<string, number> = {}
   const salesTotals: Record<string, number> = {}
   const paymentStats: Record<string, Record<string, number>> = {}
   const recentSales: Record<string, { total: number; payment_method: string; cashier_email: string; created_at: string }[]> = {}
 
   for (const store of stores) {
-    const { data: sales } = await supabase
+    const { data: sales } = await adminClient
       .from('sales')
       .select('total, payment_method, cashier_email, created_at')
       .eq('store_id', store.id)
@@ -81,7 +83,6 @@ export default async function DashboardPage() {
             {isManager ? 'Store Overview' : 'Manage your POS stores'}
           </p>
         </div>
-        {/* Only Admin can create stores */}
         {isAdmin && <CreateStoreModal />}
       </div>
 
@@ -104,7 +105,9 @@ export default async function DashboardPage() {
         </Card>
       ) : (
         <div className="space-y-6">
-          <h2 className="font-semibold text-surface-700 dark:text-surface-300 text-sm uppercase tracking-wider">Your Stores</h2>
+          <h2 className="font-semibold text-surface-700 dark:text-surface-300 text-sm uppercase tracking-wider">
+            {isManager ? 'Your Store' : 'Your Stores'}
+          </h2>
           {stores.map((store) => (
             <Card key={store.id} className="overflow-hidden">
               <CardContent className="p-5">
@@ -184,12 +187,9 @@ export default async function DashboardPage() {
                   <Link href={`/store/${store.id}/products`} className="flex-1 flex items-center justify-center gap-1.5 bg-surface-100 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300 text-xs font-semibold py-2 px-3 rounded-xl transition-colors">
                     <Package size={13} />Products
                   </Link>
-                  {/* Only Admin sees Members button */}
-                  {isAdmin && (
-                    <Link href={`/store/${store.id}/members`} className="flex items-center justify-center gap-1.5 bg-surface-100 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300 text-xs font-semibold py-2 px-3 rounded-xl transition-colors">
-                      <Users size={13} />
-                    </Link>
-                  )}
+                  <Link href={`/store/${store.id}/members`} className="flex items-center justify-center gap-1.5 bg-surface-100 hover:bg-surface-200 dark:bg-surface-800 dark:hover:bg-surface-700 text-surface-700 dark:text-surface-300 text-xs font-semibold py-2 px-3 rounded-xl transition-colors">
+                    <Users size={13} />
+                  </Link>
                 </div>
               </CardContent>
             </Card>
