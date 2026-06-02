@@ -1,3 +1,4 @@
+import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { DashboardSidebar } from '@/components/dashboard/Sidebar'
 
@@ -5,11 +6,28 @@ export default async function DashboardLayout({ children }: { children: React.Re
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const stores = user ? await supabase
+  if (!user) redirect('/auth/login')
+
+  const { data: storesRaw } = await supabase
     .from('stores')
     .select('*')
     .order('created_at', { ascending: false })
-    .then(({ data }: { data: unknown[] | null }) => data || []) : []
+
+  const stores = storesRaw || []
+
+  // If cashier - redirect to their POS
+  if (stores.length === 0) {
+    const { data: membership } = await supabase
+      .from('store_members')
+      .select('store_id')
+      .eq('user_id', user.id)
+      .eq('status', 'active')
+      .single()
+
+    if (membership) {
+      redirect(`/store/${membership.store_id}/pos`)
+    }
+  }
 
   return (
     <div className="flex h-screen bg-surface-50 dark:bg-surface-950 overflow-hidden">
