@@ -23,32 +23,36 @@ export function CreateStoreModal() {
     setLoading(true)
     setError('')
 
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    try {
+      const supabase = createClient()
+      const { data: { user } } = await supabase.auth.getUser()
 
-    if (!user) {
-      setError('Not authenticated')
+      if (!user) {
+        setError('Not authenticated')
+        setLoading(false)
+        return
+      }
+
+      const { error: insertError } = await supabase.from('stores').insert({
+        name: name.trim(),
+        type,
+        theme,
+        user_id: user.id,
+      })
+
+      if (insertError) {
+        setError(insertError.message)
+      } else {
+        setOpen(false)
+        setName('')
+        setType('retail')
+        setTheme('light')
+        router.refresh()
+      }
+    } catch (err) {
+      setError('Something went wrong')
+    } finally {
       setLoading(false)
-      return
-    }
-
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await (supabase.from('stores') as any).insert({
-      name: name.trim(),
-      type,
-      theme,
-      user_id: user.id,
-    })
-
-    if (error) {
-      setError((error as { message: string }).message)
-      setLoading(false)
-    } else {
-      setOpen(false)
-      setName('')
-      setType('retail')
-      setTheme('light')
-      router.refresh()
     }
   }
 
@@ -82,7 +86,11 @@ export function CreateStoreModal() {
                 { value: 'dark', label: '🌙 Dark Theme' },
               ]} />
 
-              {error && <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800">{error}</div>}
+              {error && (
+                <div className="text-sm text-red-600 bg-red-50 dark:bg-red-900/20 px-4 py-3 rounded-xl border border-red-200 dark:border-red-800">
+                  {error}
+                </div>
+              )}
 
               <div className="flex gap-3 pt-2">
                 <Button type="button" variant="outline" className="flex-1" onClick={() => setOpen(false)}>Cancel</Button>
