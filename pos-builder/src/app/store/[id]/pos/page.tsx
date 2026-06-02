@@ -1,5 +1,5 @@
 import { redirect, notFound } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createClient, createAdminClient } from '@/lib/supabase/server'
 import { POSTerminal } from '@/components/pos/POSTerminal'
 
 interface Props {
@@ -13,12 +13,35 @@ export default async function POSPage({ params }: Props) {
 
   if (!user) redirect('/auth/login')
 
-  const { data: store } = await supabase
+  // Check if admin or member
+  const { data: ownStore } = await supabase
     .from('stores')
     .select('*')
     .eq('id', id)
     .eq('user_id', user.id)
     .single()
+
+  const { data: membership } = await supabase
+    .from('store_members')
+    .select('role')
+    .eq('store_id', id)
+    .eq('user_id', user.id)
+    .eq('status', 'active')
+    .single()
+
+  if (!ownStore && !membership) notFound()
+
+  // Get store using admin client if member
+  let store = ownStore
+  if (!store) {
+    const adminClient = createAdminClient()
+    const { data } = await adminClient
+      .from('stores')
+      .select('*')
+      .eq('id', id)
+      .single()
+    store = data
+  }
 
   if (!store) notFound()
 
