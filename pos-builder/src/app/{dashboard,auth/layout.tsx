@@ -8,31 +8,34 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   if (!user) redirect('/auth/login')
 
-  // Check if admin (has stores) or cashier (in store_members)
-  const { data: stores } = await supabase
+  const { data: storesRaw } = await supabase
     .from('stores')
     .select('*')
     .order('created_at', { ascending: false })
 
-  const isAdmin = stores && stores.length > 0
+  const stores = storesRaw || []
 
-  // If cashier - redirect to their POS
-  if (!isAdmin) {
+  if (stores.length === 0) {
+    // Check if cashier or manager
     const { data: membership } = await supabase
       .from('store_members')
-      .select('store_id')
+      .select('store_id, role')
       .eq('user_id', user.id)
       .eq('status', 'active')
       .single()
 
     if (membership) {
-      redirect(`/store/${membership.store_id}/pos`)
+      if (membership.role === 'cashier') {
+        // Cashier → POS only
+        redirect(`/store/${membership.store_id}/pos`)
+      }
+      // Manager → Dashboard with limited access
     }
   }
 
   return (
     <div className="flex h-screen bg-surface-50 dark:bg-surface-950 overflow-hidden">
-      <DashboardSidebar user={user as any} stores={(stores || []) as any} />
+      <DashboardSidebar user={user as any} stores={stores as any} />
       <main className="flex-1 overflow-auto">
         {children}
       </main>
