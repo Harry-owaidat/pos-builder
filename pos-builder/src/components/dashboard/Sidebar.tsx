@@ -8,6 +8,7 @@ import type { User } from '@supabase/supabase-js'
 import type { Store as StoreType } from '@/types'
 import { STORE_TYPE_ICONS } from '@/lib/utils'
 import { cn } from '@/lib/utils'
+import { NotificationBell } from '@/components/dashboard/NotificationBell'
 
 interface Props {
   user: User
@@ -61,9 +62,12 @@ export function DashboardSidebar({ user, stores }: Props) {
       </nav>
 
       <div className="px-3 py-3 border-t border-surface-100 dark:border-surface-800 space-y-1">
-        <div className="px-3 py-2">
-          <p className="text-xs font-medium text-surface-700 dark:text-surface-300 truncate">{user.email}</p>
-          <p className="text-xs text-surface-400">Free plan</p>
+        <div className="px-3 py-2 flex items-center justify-between">
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-medium text-surface-700 dark:text-surface-300 truncate">{user.email}</p>
+            <p className="text-xs text-surface-400">Free plan</p>
+          </div>
+          <NotificationBell storeIds={stores.map(s => s.id)} />
         </div>
         <button onClick={handleLogout} className="w-full flex items-center gap-2 px-3 py-2 rounded-xl text-sm text-surface-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
           <LogOut size={15} />
