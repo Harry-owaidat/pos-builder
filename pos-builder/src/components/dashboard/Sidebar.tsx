@@ -5,7 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { LayoutDashboard, LogOut, ShoppingCart, Package, Users, BarChart2, Receipt, Truck } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import type { User } from '@supabase/supabase-js'
-import type { Store as StoreType } from '@/types'
+import type { Store as StoreType, MemberRole } from '@/types'
 import { STORE_TYPE_ICONS } from '@/lib/utils'
 import { cn } from '@/lib/utils'
 import { NotificationBell } from '@/components/dashboard/NotificationBell'
@@ -13,11 +13,21 @@ import { NotificationBell } from '@/components/dashboard/NotificationBell'
 interface Props {
   user: User
   stores: StoreType[]
+  userRole?: MemberRole | 'admin'
 }
 
-export function DashboardSidebar({ user, stores }: Props) {
+const ROLE_LABELS = {
+  admin: '👑 Admin',
+  manager: '👔 Manager',
+  cashier: '💼 Cashier',
+}
+
+export function DashboardSidebar({ user, stores, userRole = 'admin' }: Props) {
   const pathname = usePathname()
   const router = useRouter()
+
+  const isAdmin = userRole === 'admin'
+  const isManager = userRole === 'manager'
 
   async function handleLogout() {
     const supabase = createClient()
@@ -28,7 +38,7 @@ export function DashboardSidebar({ user, stores }: Props) {
 
   return (
     <aside className="w-64 shrink-0 bg-white dark:bg-surface-900 border-r border-surface-100 dark:border-surface-800 flex flex-col h-full">
-      
+
       {/* Header - Logo + User + Notifications */}
       <div className="px-4 py-4 border-b border-surface-100 dark:border-surface-800">
         {/* Logo */}
@@ -41,7 +51,7 @@ export function DashboardSidebar({ user, stores }: Props) {
         <div className="flex items-center justify-between bg-surface-50 dark:bg-surface-800 rounded-xl px-3 py-2.5">
           <div className="min-w-0 flex-1">
             <p className="text-xs font-medium text-surface-700 dark:text-surface-300 truncate">{user.email}</p>
-            <p className="text-xs text-surface-400">Free plan</p>
+            <p className="text-xs text-surface-400">{ROLE_LABELS[userRole] || 'Free plan'}</p>
           </div>
           <NotificationBell storeIds={stores.map(s => s.id)} />
         </div>
@@ -63,7 +73,12 @@ export function DashboardSidebar({ user, stores }: Props) {
                 <div className="ml-7 space-y-0.5">
                   <NavItem href={`/store/${store.id}/pos`} icon={<ShoppingCart size={14} />} label="POS Terminal" active={pathname === `/store/${store.id}/pos`} small />
                   <NavItem href={`/store/${store.id}/products`} icon={<Package size={14} />} label="Products" active={pathname === `/store/${store.id}/products`} small />
-                  <NavItem href={`/store/${store.id}/members`} icon={<Users size={14} />} label="Team Members" active={pathname === `/store/${store.id}/members`} small />
+                  
+                  {/* Team Members - Admin sees full, Manager sees read-only */}
+                  {(isAdmin || isManager) && (
+                    <NavItem href={`/store/${store.id}/members`} icon={<Users size={14} />} label="Team Members" active={pathname === `/store/${store.id}/members`} small />
+                  )}
+
                   <NavItem href={`/store/${store.id}/sales`} icon={<BarChart2 size={14} />} label="Sales Report" active={pathname === `/store/${store.id}/sales`} small />
                   <NavItem href={`/store/${store.id}/expenses`} icon={<Receipt size={14} />} label="Expenses" active={pathname === `/store/${store.id}/expenses`} small />
                   <NavItem href={`/store/${store.id}/suppliers`} icon={<Truck size={14} />} label="Suppliers" active={pathname === `/store/${store.id}/suppliers`} small />

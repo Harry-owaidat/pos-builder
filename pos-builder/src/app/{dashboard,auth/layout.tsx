@@ -15,8 +15,9 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
   const stores = storesRaw || []
 
+  let userRole: 'admin' | 'manager' | 'cashier' = 'admin'
+
   if (stores.length === 0) {
-    // Check if cashier or manager
     const { data: membership } = await supabase
       .from('store_members')
       .select('store_id, role')
@@ -26,16 +27,15 @@ export default async function DashboardLayout({ children }: { children: React.Re
 
     if (membership) {
       if (membership.role === 'cashier') {
-        // Cashier → POS only
         redirect(`/store/${membership.store_id}/pos`)
       }
-      // Manager → Dashboard with limited access
+      userRole = membership.role as 'manager'
     }
   }
 
   return (
     <div className="flex h-screen bg-surface-50 dark:bg-surface-950 overflow-hidden">
-      <DashboardSidebar user={user as any} stores={stores as any} />
+      <DashboardSidebar user={user as any} stores={stores as any} userRole={userRole} />
       <main className="flex-1 overflow-auto">
         {children}
       </main>
